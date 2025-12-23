@@ -18,7 +18,7 @@ import { uploadOnCloudinary } from "../utils/cloudinary.js"
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { User } from "../models/user.model.js"
 import jwt from "jsonwebtoken"
-import { pipeline, pipeline, pipeline, pipeline } from "stream";
+import { pipeline} from "stream";
 import mongoose from "mongoose";
 import bcrypt from "bcrypt"
 
@@ -116,7 +116,7 @@ const loginUser = asyncHandler(
         user.refreshToken = refreshToken
         await user.save({ validateBeforeSave: false })
 
-        console.log("After save - refreshToken in DB:", user.refreshToken)
+        // console.log("After save - refreshToken in DB:", user.refreshToken)
 
         const loggedInUser = await User.findById(user._id).select("-password -refreshToken")
 
@@ -373,7 +373,7 @@ const getWatchHistory = asyncHandler(
 
 
 const updateUserAvatar = asyncHandler(
-    async (req, res, _, _) => {
+    async (req, res, _) => {
         // get the localAvatarFilePath from  req.files?.avatar[0]?.path;
         // if you do not find localAvatarFilePath, return as it is mandatory
         // upload this new file on cloudinary and get the url
@@ -411,7 +411,7 @@ const updateUserAvatar = asyncHandler(
 
 
 const updateUserCoverImage = asyncHandler(
-    async (req, res, _, _) => {
+    async (req, res, _) => {
         // get the localAvatarFilePath from  req.files?.avatar[0]?.path;
         // if you do not find localAvatarFilePath, return as it is mandatory
         // upload this new file on cloudinary and get the url
@@ -451,7 +451,7 @@ const updateUserCoverImage = asyncHandler(
 
 
 const updateAccountDetails = asyncHandler(
-    async (req, res, _, _) => {
+    async (req, res, _) => {
         // get : username , fullname , email , password FROM: req body
         // (avatar and coverImage handled by multer)
         // return if any of the fields is empty
@@ -503,7 +503,7 @@ const updateAccountDetails = asyncHandler(
 
 
 const getCurrentUser = asyncHandler(
-    async (req, res, _, _) => {
+    async (req, res, _) => {
         const currUserId = req.user?._id
 
         if (!currUserId) throw new ApiError(400, "Please login before accessing your account")
@@ -526,7 +526,7 @@ const getCurrentUser = asyncHandler(
 
 
 const changeCurrentPassword = asyncHandler(
-    async (req, res, _, _) => {
+    async (req, res, _) => {
         const { newPassword } = req.body
         if (!newPassword) throw new ApiError(408, "A new password is required")
         const userId = req.user?._id;

@@ -16,7 +16,6 @@ import {
 from "../controllers/user.controller.js"
 import { upload } from "../middlewares/multer.middleware.js"
 import { verifyJWT } from "../middlewares/auth.middleware.js"
-import { verify } from "jsonwebtoken"
 const router = Router()
 router.route("/register").post(
     upload.fields([
@@ -41,7 +40,7 @@ router.route("/user").get(verifyJWT, getCurrentUser)
 router.route("/change-avatar")
     .patch(
         verifyJWT,
-        upload.fields([
+        upload.single([
             {
                 name: "avatar",
                 maxCount: 1,
@@ -65,7 +64,7 @@ router.route("/update-account-details").patch(
 )
 router.route("change-coverimage").patch(
     verifyJWT,
-    upload.fields([
+    upload.single([
         {
             name: "coverImg",
             maxCount: 1,
