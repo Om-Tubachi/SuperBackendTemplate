@@ -16,9 +16,10 @@ app.use(cookieParser())
 
 // import routes
 import router from "./routes/user.routes.js"
+import videRouter from "./routes/video.routes.js"
 app.use("/api/users" , router)
+app.use("/api/video" , videRouter)
 
-// app.use("/" , router)
 
 // http://localhost:8000/api/v1/users/register
 
