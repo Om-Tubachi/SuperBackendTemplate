@@ -72,6 +72,9 @@ const getVideoById = asyncHandler(async (req, res) => {
     const { videoId } = req.params
     //TODO: get video by id
     // views are increemented here
+    // handled views increment by adding a pre hook in the Video model
+
+    
 })
 
 const updateVideo = asyncHandler(async (req, res) => {

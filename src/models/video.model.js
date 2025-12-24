@@ -44,4 +44,16 @@ const videoSchema = new Schema(
 
 videoSchema.plugin(mongooseAggregatePaginate)
 
+videoSchema.pre("find" , async function (next) {
+    await this.findByIdAndUpdate(
+        this._id,
+        {
+            $inc:{
+                views: 1
+            }
+        }
+    )
+    next()
+})
+
 export const Video = mongoose.model("Video", videoSchema)
