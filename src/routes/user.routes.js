@@ -40,12 +40,7 @@ router.route("/user").get(verifyJWT, getCurrentUser)
 router.route("/change-avatar")
     .patch(
         verifyJWT,
-        upload.single([
-            {
-                name: "avatar",
-                maxCount: 1,
-            }
-        ]),
+        upload.single("avatar"),
         updateUserAvatar
     )
 router.route("/update-account-details").patch(
@@ -64,12 +59,7 @@ router.route("/update-account-details").patch(
 )
 router.route("change-coverimage").patch(
     verifyJWT,
-    upload.single([
-        {
-            name: "coverImg",
-            maxCount: 1,
-        }
-    ]),
+    upload.single("coverImg"),
     updateUserCoverImage
 )
 

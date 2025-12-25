@@ -21,12 +21,7 @@ videoRouter.use(verifyJWT)
 videoRouter.route("/update/:videoId")
 .patch(
     
-    upload.single([
-        {
-            name:"thumbnail",
-            maxCount:1
-        }
-    ]),
+    upload.single("thumbnail"),
     updateVideo
 )
 videoRouter.route("/delete/:videoId").delete(deleteVideo)
