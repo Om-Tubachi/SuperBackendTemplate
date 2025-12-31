@@ -204,6 +204,28 @@ const getVideoById = asyncHandler(async (req, res) => {
 
         },
         {
+            $lookup: {
+                from: "likes",
+                localField: "_id",
+                $foreignField: "video",
+                as: "likes"
+            }
+        },
+        {
+            $lookup: {
+                from: "dislikes",
+                localField: "_id",
+                $foreignField: "video",
+                as: "dislikes"
+            }
+        },
+        {
+            $addFields: {
+                likesCount: { $size: "$likes" },
+                dislikesCount: { $size: "$dislikes" },
+            }
+        },
+        {
             $project: {
                 title: 1,
                 description: 1,
@@ -213,7 +235,8 @@ const getVideoById = asyncHandler(async (req, res) => {
                 videoFile: 1,
                 thumbnail: 1,
                 duration: 1,
-
+                likesCount: 1,
+                dislikesCount: 1
             }
         }
     ]

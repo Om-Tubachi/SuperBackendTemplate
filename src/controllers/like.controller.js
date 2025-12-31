@@ -1,128 +1,351 @@
 import mongoose, { isValidObjectId } from "mongoose"
 import { Like } from "../models/like.model.js"
+import { Dislike } from "../models/dislike.model.js"
 import { ApiError } from "../utils/ApiError.js"
 import { ApiResponse } from "../utils/ApiResponse.js"
 import { asyncHandler } from "../utils/asyncHandler.js"
 
 const toggleVideoLike = asyncHandler(async (req, res) => {
-    const { videoId } = req.params
+    const { videoId, action } = req.params
+    // action is "like" || action is "dislike" always
     if (!videoId)
         throw new ApiError(408, "Did not get video id or such video with given id does not exist")
+
+    if (!action || !["like", "dislike"].includes(action.trim()))
+        throw new ApiError(408, "Did not get like or dislike action")
     //TODO: toggle like on video
 
-    // When video is liked , doc with vidid and userId is created
-    // When video is disliked, we find the doc having vidId and delete it
+    // first find existinglike and existingdislike doc of current vidId in Like and Dislike collection
+    // if you find existinglike, delete that doc and create a new dislike doc 
+    // else if you find existingDislike, delete that doc and create a new like doc 
+    // MOST IMPORTANT CASE: what if you dont find both ----> User has neither liked nor disliked the video
+    // WHAT IF: user has already disliked, and again clicks in it to remove his dislike, same with like
 
-    const existingLike = await Like.findOne({ 
+    // WHAT WILL HELP IS: get an action = like or dislike from front end, 
+    // action = like --> we find a like doc --> delete like doc, end of operation
+    // action = like --> we find a dislike doc --> delete dilike doc and create like doc, end of operation
+    // action = like --> we find neither dislike nor like doc --> simply creatre like doc , end of operation
+
+    // action = dislike --> we find a dislike doc --> delete dislike doc, end of operation
+    // action = dislike --> we find a like doc --> delete like doc and create dislike doc, end of operation
+    // action = dislike --> we find neither dislike nor like doc --> simply creatre dislike doc , end of operation
+
+
+
+    const existingLike = await Like.findOne({
         video: videoId,
-        likedBy: req.user?._id 
+        likedBy: req.user?._id
     })
 
-    if (!existingLike) {
-        // video is not liked, like it
-        const likeDoc = await Like.create({
-            likedBy: req.user?._id,
-            video: videoId
-        })
-        
-        if (!likeDoc)
-            throw new ApiError(500, "Failed to like this video")
-            
-        return res
-            .status(200)
-            .json(
-                new ApiResponse(200, likeDoc, `Video with id: ${videoId} liked succesfully`)
-            )
-    } else {
-        // video is liked, delete it (dis-like)
-        const deleted = await Like.findByIdAndDelete(existingLike._id)
+    const existingDislike = await Dislike.findOne({
+        video: videoId,
+        dislikedBy: req.user?._id
+    })
 
-        if (!deleted)
-            throw new ApiError(500, "Failed to delete this video")
-            
-        return res
-            .status(200)
-            .json(
-                new ApiResponse(200, {}, `Dislike operation for video id ${videoId} executed successfully`)
-            )
+    if (existingLike && !existingDislike) {
+        const deleteLike = await Like.findByIdAndDelete(existingLike._id)
+        if (!deleteLike)
+            throw new ApiError(409, "Failed to remove like from video")
+        if (action === "like") {
+            // delete existingLike doc
+            return res
+                .status(200)
+                .json(
+                    new ApiResponse(200, deleteLike, "Removed like succesfully")
+                )
+
+        }
+        else {
+            // delete existingLike doc, create new dislike doc
+            const newDislikeDoc = await Dislike.create({
+                video: videoId,
+                dislikedBy: req.user?._id
+            })
+            if (!newDislikeDoc)
+                throw new ApiError(409, "Failed to dislike current video, but removed its like")
+
+            return res
+                .status(200)
+                .json(
+                    new ApiResponse(200, newDislikeDoc, "disliked video and removed like succesfully")
+                )
+        }
+    }
+    else if (!existingLike && existingDislike) {
+
+        const deleteDislike = await Dislike.findByIdAndDelete(existingDislike._id)
+
+        if (!deleteDislike)
+            throw new ApiError(409, "Failed to remove dislike from video")
+
+        if (action === "like") {
+            // delete existingDislike, create like doc
+
+            const newLikeDoc = await Like.create({
+                video: videoId,
+                likedBy: req.user?._id
+            })
+            if (!newLikeDoc)
+                throw new ApiError(409, "Failed to like current video, but removed its dislike")
+
+            return res
+                .status(200)
+                .json(
+                    new ApiResponse(200, newLikeDoc, "liked video and removed dislike succesfully")
+                )
+        }
+        else {
+            //  just delete existing dislike
+            return res
+                .status(200)
+                .json(
+                    new ApiResponse(200, deleteDislike, "Removed dislike succesfully")
+                )
+
+        }
+    }
+    else {
+        if (action === "like") {
+            // just make new like
+            const newLikeDoc = await Like.create({
+                video: videoId,
+                likedBy: req.user?._id
+            })
+            if (!newLikeDoc)
+                throw new ApiError(409, "Failed to like current video")
+
+            return res
+                .status(200)
+                .json(
+                    new ApiResponse(200, newLikeDoc, "liked video succesfully")
+                )
+        }
+        else {
+            // just make new dislike
+
+            const newDislikeDoc = await Dislike.create({
+                video: videoId,
+                dislikedBy: req.user?._id
+            })
+            if (!newDislikeDoc)
+                throw new ApiError(409, "Failed to dislike current video")
+
+            return res
+                .status(200)
+                .json(
+                    new ApiResponse(200, newDislikeDoc, "disliked video succesfully")
+                )
+        }
     }
 })
 
 const toggleCommentLike = asyncHandler(async (req, res) => {
-    const { commentId } = req.params
-    //TODO: toggle like on comment
+    const { commentId, action } = req.params
 
-    const existingLike = await Like.findOne({ 
+    if (!commentId)
+        throw new ApiError(408, "Did not get comment id")
+
+    if (!action || !["like", "dislike"].includes(action.trim()))
+        throw new ApiError(408, "Did not get like or dislike action")
+
+    const existingLike = await Like.findOne({
         comment: commentId,
-        likedBy: req.user?._id 
+        likedBy: req.user?._id
     })
 
-    if (!existingLike) {
-        // video is not liked, like it
-        const commentDoc = await Like.create({
-            likedBy: req.user?._id,
-            comment: commentId
-        })
-        
-        if (!commentDoc)
-            throw new ApiError(409, "Failed to like this comment")
-            
-        return res
-            .status(200)
-            .json(
-                new ApiResponse(200, commentDoc, `Comment with id: ${commentId} liked succesfully`)
-            )
-    } else {
-        // video is liked, delete it (dis-like)
-        const deleted = await Like.findByIdAndDelete(existingLike._id)
+    const existingDislike = await Dislike.findOne({
+        comment: commentId,
+        dislikedBy: req.user?._id
+    })
 
-        if (!deleted)
-            throw new ApiError(409, "Failed to delete this comment")
-            
-        return res
-            .status(200)
-            .json(
-                new ApiResponse(200, {}, `Dislike operation for comment id ${commentId} executed successfully`)
-            )
+    if (existingLike && !existingDislike) {
+        const deleteLike = await Like.findByIdAndDelete(existingLike._id)
+        if (!deleteLike)
+            throw new ApiError(409, "Failed to remove like from comment")
+
+        if (action === "like") {
+            return res
+                .status(200)
+                .json(
+                    new ApiResponse(200, deleteLike, "Removed like successfully")
+                )
+        }
+        else {
+            const newDislikeDoc = await Dislike.create({
+                comment: commentId,
+                dislikedBy: req.user?._id
+            })
+            if (!newDislikeDoc)
+                throw new ApiError(409, "Failed to dislike comment, but removed its like")
+
+            return res
+                .status(200)
+                .json(
+                    new ApiResponse(200, newDislikeDoc, "Disliked comment and removed like successfully")
+                )
+        }
+    }
+    else if (!existingLike && existingDislike) {
+        const deleteDislike = await Dislike.findByIdAndDelete(existingDislike._id)
+        if (!deleteDislike)
+            throw new ApiError(409, "Failed to remove dislike from comment")
+
+        if (action === "like") {
+            const newLikeDoc = await Like.create({
+                comment: commentId,
+                likedBy: req.user?._id
+            })
+            if (!newLikeDoc)
+                throw new ApiError(409, "Failed to like comment, but removed its dislike")
+
+            return res
+                .status(200)
+                .json(
+                    new ApiResponse(200, newLikeDoc, "Liked comment and removed dislike successfully")
+                )
+        }
+        else {
+            return res
+                .status(200)
+                .json(
+                    new ApiResponse(200, deleteDislike, "Removed dislike successfully")
+                )
+        }
+    }
+    else {
+        if (action === "like") {
+            const newLikeDoc = await Like.create({
+                comment: commentId,
+                likedBy: req.user?._id
+            })
+            if (!newLikeDoc)
+                throw new ApiError(409, "Failed to like comment")
+
+            return res
+                .status(200)
+                .json(
+                    new ApiResponse(200, newLikeDoc, "Liked comment successfully")
+                )
+        }
+        else {
+            const newDislikeDoc = await Dislike.create({
+                comment: commentId,
+                dislikedBy: req.user?._id
+            })
+            if (!newDislikeDoc)
+                throw new ApiError(409, "Failed to dislike comment")
+
+            return res
+                .status(200)
+                .json(
+                    new ApiResponse(200, newDislikeDoc, "Disliked comment successfully")
+                )
+        }
     }
 })
 
 const toggleTweetLike = asyncHandler(async (req, res) => {
-    const { tweetId } = req.params
-    //TODO: toggle like on tweet
-    const existingLike = await Like.findOne({ 
+    const { tweetId, action } = req.params
+
+    if (!tweetId)
+        throw new ApiError(408, "Did not get tweet id")
+
+    if (!action || !["like", "dislike"].includes(action.trim()))
+        throw new ApiError(408, "Did not get like or dislike action")
+
+    const existingLike = await Like.findOne({
         tweet: tweetId,
-        likedBy: req.user?._id 
+        likedBy: req.user?._id
     })
 
-    if (!existingLike) {
-        // video is not liked, like it
-        const tweetDoc = await Like.create({
-            likedBy: req.user?._id,
-            tweet: tweetId
-        })
-        
-        if (!tweetDoc)
-            throw new ApiError(409, "Failed to like this tweet")
-            
-        return res
-            .status(200)
-            .json(
-                new ApiResponse(200, tweetDoc, `Tweet with id: ${tweetId} liked succesfully`)
-            )
-        }
-    else {
-        // video is liked, delete it (dis-like)
-        const deleted = await Like.findByIdAndDelete(existingLike._id)
+    const existingDislike = await Dislike.findOne({
+        tweet: tweetId,
+        dislikedBy: req.user?._id
+    })
 
-        if (!deleted)
-            throw new ApiError(409, "Failed to delete this tweet")
-            
-        return res
-            .status(200)
-            .json(
-                new ApiResponse(200, {}, `Dislike operation for tweet id ${tweetId} executed successfully`)
-            )
+    if (existingLike && !existingDislike) {
+        const deleteLike = await Like.findByIdAndDelete(existingLike._id)
+        if (!deleteLike)
+            throw new ApiError(409, "Failed to remove like from tweet")
+
+        if (action === "like") {
+            return res
+                .status(200)
+                .json(
+                    new ApiResponse(200, deleteLike, "Removed like successfully")
+                )
+        }
+        else {
+            const newDislikeDoc = await Dislike.create({
+                tweet: tweetId,
+                dislikedBy: req.user?._id
+            })
+            if (!newDislikeDoc)
+                throw new ApiError(409, "Failed to dislike tweet, but removed its like")
+
+            return res
+                .status(200)
+                .json(
+                    new ApiResponse(200, newDislikeDoc, "Disliked tweet and removed like successfully")
+                )
+        }
+    }
+    else if (!existingLike && existingDislike) {
+        const deleteDislike = await Dislike.findByIdAndDelete(existingDislike._id)
+        if (!deleteDislike)
+            throw new ApiError(409, "Failed to remove dislike from tweet")
+
+        if (action === "like") {
+            const newLikeDoc = await Like.create({
+                tweet: tweetId,
+                likedBy: req.user?._id
+            })
+            if (!newLikeDoc)
+                throw new ApiError(409, "Failed to like tweet, but removed its dislike")
+
+            return res
+                .status(200)
+                .json(
+                    new ApiResponse(200, newLikeDoc, "Liked tweet and removed dislike successfully")
+                )
+        }
+        else {
+            return res
+                .status(200)
+                .json(
+                    new ApiResponse(200, deleteDislike, "Removed dislike successfully")
+                )
+        }
+    }
+    else {
+        if (action === "like") {
+            const newLikeDoc = await Like.create({
+                tweet: tweetId,
+                likedBy: req.user?._id
+            })
+            if (!newLikeDoc)
+                throw new ApiError(409, "Failed to like tweet")
+
+            return res
+                .status(200)
+                .json(
+                    new ApiResponse(200, newLikeDoc, "Liked tweet successfully")
+                )
+        }
+        else {
+            const newDislikeDoc = await Dislike.create({
+                tweet: tweetId,
+                dislikedBy: req.user?._id
+            })
+            if (!newDislikeDoc)
+                throw new ApiError(409, "Failed to dislike tweet")
+
+            return res
+                .status(200)
+                .json(
+                    new ApiResponse(200, newDislikeDoc, "Disliked tweet successfully")
+                )
+        }
     }
 })
 
