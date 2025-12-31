@@ -12,20 +12,20 @@ import { Router } from "express"
 import { verifyJWT } from "../middlewares/auth.middleware.js"
 
 
-const videoRouter = Router()
+const router = Router()
 
-videoRouter.route("/").get(getAllVideos)
-videoRouter.route("/:videoId").get(getVideoById)
+router.route("/").get(getAllVideos)
+router.route("/:videoId").get(getVideoById)
 
-videoRouter.use(verifyJWT)
-videoRouter.route("/update/:videoId")
+router.use(verifyJWT)
+router.route("/update/:videoId")
 .patch(
     
     upload.single("thumbnail"),
     updateVideo
 )
-videoRouter.route("/delete/:videoId").delete(deleteVideo)
-videoRouter.route("/publish").post(
+router.route("/delete/:videoId").delete(deleteVideo)
+router.route("/publish").post(
     
     upload.fields([
         {
@@ -41,4 +41,4 @@ videoRouter.route("/publish").post(
     publishAVideo
 )
 
-export default videoRouter
+export default router

@@ -8,13 +8,13 @@ import {
 import { Router } from "express";
 import { verifyJWT } from "../middlewares/auth.middleware.js"
 
-const commentRouter = Router()
+const router = Router()
 
-commentRouter.route("/getComments/:videoId").get(getVideoComments)
+router.route("/getComments/:videoId").get(getVideoComments)
 
-commentRouter.use(verifyJWT)
-commentRouter.route("/addComment/:videoId").post(addComment)
-commentRouter.route("/updateComment/:commentId").patch(updateComment)
-commentRouter.route("/deleteComment/:commentId").delete(deleteComment)
+router.use(verifyJWT)
+router.route("/addComment/:videoId").post(addComment)
+router.route("/updateComment/:commentId").patch(updateComment)
+router.route("/deleteComment/:commentId").delete(deleteComment)
 
-export default commentRouter
+export default router
