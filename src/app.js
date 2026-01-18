@@ -30,7 +30,10 @@ app.use("/api/video" , videRouter)
 app.use("/api/comments", commentRouter)
 app.use("/api/dashboard", dashboardRouter)
 app.use("/api/health-check", healthcheckRouter)
-app.use("/api/like", likesRouter)
+
+// /api/:action ==> this action will be always : "like" || "dislike"
+app.use("/api/likeOrDislike", likesRouter)
+
 app.use("/api/playlist", playlistRouter)
 app.use("/api/subscription", subsciptionRouter)
 app.use("/api/tweet", tweetRouter)

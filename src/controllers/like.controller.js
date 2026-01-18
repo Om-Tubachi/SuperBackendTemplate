@@ -7,7 +7,10 @@ import { asyncHandler } from "../utils/asyncHandler.js"
 
 const toggleVideoLike = asyncHandler(async (req, res) => {
     const { videoId, action } = req.params
+   
+    
     // action is "like" || action is "dislike" always
+    // action is "like" || action is "dislike" ->  THIS WILL ALWAYS BE TRUE BECAUSE FRONTEND WILL COMPULSORILY MAKE SURE THIS IS WHAT IS SENT.
     if (!videoId)
         throw new ApiError(408, "Did not get video id or such video with given id does not exist")
 

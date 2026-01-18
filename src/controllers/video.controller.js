@@ -87,27 +87,34 @@ const publishAVideo = asyncHandler(async (req, res) => {
     if (!id)
         throw new ApiError(409, "Login to upload a video")
 
-    console.log(typeof req.body.title);
     const { title, description } = req.body
 
     if ([title, description].some((field) => field?.trim() === ""))
         throw new ApiError(409, "Title or description cannot be empty")
 
+
     const localVideoPath = req.files?.videoFile[0]?.path
     const localThumbnailPath = req.files?.thumbnail[0]?.path
+
 
     if ([localVideoPath, localThumbnailPath].some((field) => field?.trim() === ""))
         throw new ApiError(409, "Video and thumbnail are compulsory inputs")
 
+
+
     const vidCloudinaryUrl = await uploadOnCloudinary(localVideoPath)
     const thumbnailCloudinaryUrl = await uploadOnCloudinary(localThumbnailPath)
 
+
     if (!vidCloudinaryUrl)
         throw new ApiError(500, "Failed to upload video")
+
     if (!thumbnailCloudinaryUrl)
         throw new ApiError(500, "Failed to upload thumbnail")
 
+
     const duration = vidCloudinaryUrl.duration
+
     const video = await Video.create({
         videoFile: vidCloudinaryUrl.url,
         thumbnail: thumbnailCloudinaryUrl.url,
@@ -186,9 +193,7 @@ const getVideoById = asyncHandler(async (req, res) => {
                             }
                         }
                     },
-                    {
-                        $unwind: "$owner"  // Converts owner from [{}] to {}
-                    },
+
                     {
                         $project: {
                             username: 1,
@@ -207,23 +212,86 @@ const getVideoById = asyncHandler(async (req, res) => {
             $lookup: {
                 from: "likes",
                 localField: "_id",
-                $foreignField: "video",
-                as: "likes"
+                foreignField: "video",
+                as: "likedBy",
+                pipeline: [
+                    {
+                        $lookup: {
+                            from: "users",
+                            localField: "likedBy",
+                            foreignField: "_id",
+                            as: "user",
+                        }
+                    },
+                    {
+                        $unwind: "$user"  // Convert user: [{}] to user: {}
+                    },
+                    {
+                        $addFields: {
+                            username: "$user.username",
+                            avatar: "$user.avatar",
+                            fullName: "$user.fullName",
+                            userId: "$user._id"
+                        }
+                    },
+                    {
+                        $project: {
+                            username: 1,
+                            avatar: 1,
+                            fullName: 1,
+                            userId: 1,
+                            likedBy: 1
+                        }
+                    }
+                ]
             }
         },
         {
             $lookup: {
                 from: "dislikes",
                 localField: "_id",
-                $foreignField: "video",
-                as: "dislikes"
+                foreignField: "video",
+                as: "dislikedBy",
+                pipeline: [
+                    {
+                        $lookup: {
+                            from: "users",
+                            localField: "dislikedBy",
+                            foreignField: "_id",
+                            as: "user",
+                        }
+                    },
+                    {
+                        $unwind: "$user"  // Convert user: [{}] to user: {}
+                    },
+                    {
+                        $addFields: {
+                            username: "$user.username",
+                            avatar: "$user.avatar",
+                            fullName: "$user.fullName",
+                            userId: "$user._id"
+                        }
+                    },
+                    {
+                        $project: {
+                            username: 1,
+                            avatar: 1,
+                            fullName: 1,
+                            userId: 1,
+                            dislikedBy: 1
+                        }
+                    }
+                ]
             }
         },
         {
             $addFields: {
-                likesCount: { $size: "$likes" },
-                dislikesCount: { $size: "$dislikes" },
+                likesCount: { $size: "$likedBy" },
+                dislikesCount: { $size: "$dislikedBy" },
             }
+        },
+        {
+            $unwind: "$owner"  // Converts owner from [{}] to {}
         },
         {
             $project: {
@@ -236,7 +304,10 @@ const getVideoById = asyncHandler(async (req, res) => {
                 thumbnail: 1,
                 duration: 1,
                 likesCount: 1,
-                dislikesCount: 1
+                dislikesCount: 1,
+                likedBy:1,
+                dislikedBy:1
+
             }
         }
     ]
@@ -266,17 +337,18 @@ const updateVideo = asyncHandler(async (req, res) => {
     // update those fields
     // return the updated doc
 
-    const { title: newTitle, description: newDescription, thumbnail } = req.body
+    const { title: newTitle, description: newDescription } = req.body
 
     if ([newTitle, newDescription].some((field) => field?.trim() === ""))
         throw new ApiError(408, "Title or Description cannot be empty")
 
-    const localThumbnailPath = req.file?.thumbnail[0]?.path
+    const localThumbnailPath = req.file?.path
 
     if (!localThumbnailPath)
         throw new ApiError(409, "Thumbnail is required")
 
     const cloudinaryThumbnail = await uploadOnCloudinary(localThumbnailPath)
+    
 
     if (!cloudinaryThumbnail)
         throw new ApiError(409, "Failed to upload video")
