@@ -94,7 +94,7 @@ const getChannelVideos = asyncHandler(async (req, res) => {
     const userId = req.user?._id
     const pipeline = [
         {
-            owner: new mongoose.Types.ObjectId(userId)
+            $match: { owner: new mongoose.Types.ObjectId(userId) }
         },
         {
             $lookup: {
